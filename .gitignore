@@ -1,0 +1,12 @@
+# Runtime
+config.env
+state.json
+logs/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store

@@ -1,0 +1,15 @@
+[Unit]
+Description=Telegram Codex Bridge
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/telegram-codex-bridge
+EnvironmentFile=%h/telegram-codex-bridge/config.env
+ExecStart=%h/telegram-codex-bridge/.venv/bin/python %h/telegram-codex-bridge/bot.py
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target
