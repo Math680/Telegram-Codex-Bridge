@@ -1,74 +1,24 @@
 # Telegram Codex Bridge
 
-A secure, self‑hosted **Telegram → Codex CLI** bridge that runs locally on your VPS. It uses **long polling** (no webhooks, no inbound ports), enforces **user allowlists**, and restricts work to **approved directories only**.
+A self-hosted Python service that forwards Telegram requests to Codex CLI on a Linux machine. Telegram long polling avoids inbound webhooks. Telegram user IDs control who can use the bot, and workspace aliases select Codex's working directory.
 
-If you want a private Codex assistant you can message from Telegram, this is it.
+**Request flow:** Telegram → [bot and command handlers](bot.py) → [Codex wrapper](wrappers/run_codex.sh) → reply to Telegram. The bot runs one command at a time and supports timeouts, session persistence, and rotating logs. A [systemd user service](systemd/telegram-codex-bridge.service) runs the bot in the background.
 
-## Why this exists
-- **Private**: runs on your machine, your files, your model choices.
-- **Safe by default**: only allows whitelisted users and directories.
-- **Reliable**: systemd service, logging, timeouts, and a global lock.
+## Quick start
 
-## Features
-- Telegram long polling (no inbound ports)
-- Allowlist by Telegram user ID(s)
-- Directory allowlist by alias (no raw paths from Telegram)
-- Global lock (one command at a time)
-- Per‑command timeouts
-- Session persistence (keeps context across messages)
-- Optional system prompt
-- Configurable Codex sandbox/approvals
-- Structured logs with rotation
+1. On Linux with systemd and Python 3 with `venv`, install Codex CLI and verify that `codex --version` and `codex login` work for the service user.
+2. Create a Telegram bot through `@BotFather` and obtain the numeric Telegram user ID of each person you plan to authorize.
+3. Clone the repository into the location expected by the bundled service:
 
----
+   ```bash
+   git clone https://github.com/Math680/Telegram-Codex-Bridge.git ~/telegram-codex-bridge
+   cd ~/telegram-codex-bridge
+   cp .env.example config.env
+   chmod 600 config.env
+   ```
 
-## Quick Start (A → Z)
-
-### 1) Create a Telegram bot (phone)
-1. Open Telegram and search **@BotFather**
-2. Send `/newbot`, choose a name + username
-3. Copy the **bot token**
-
-### 2) Get your numeric user_id (phone)
-Use either bot:
-- **@userinfobot** → `/start`
-- **@getmyid_bot** → `/start`
-
-### 3) Install Codex CLI (server)
-Make sure the Codex CLI is installed and works:
-```bash
-codex --version
-codex login
-```
-
-### 4) Install the bridge (server)
-```bash
-git clone https://github.com/<you>/telegram-codex-bridge.git ~/telegram-codex-bridge
-cd ~/telegram-codex-bridge
-./install.sh
-```
-
-### 5) Configure environment (server)
-Edit `~/telegram-codex-bridge/config.env`:
-```
-TELEGRAM_BOT_TOKEN=...
-TELEGRAM_USER_ID=123456789
-CODEX_BIN=/usr/bin/codex
-ALLOWED_DIRS_JSON={"app":"/home/you/projects/my-app"}
-DEFAULT_DIR_ALIAS=app
-```
-
-Then restart:
-```bash
-systemctl --user restart telegram-codex-bridge
-```
-
-### 6) Start chatting (Telegram)
-Open your bot and try:
-- `/ping`
-- `/ask hello`
-
----
+4. Edit `config.env` before starting the service. Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_USER_ID`, the absolute path to Codex in `CODEX_BIN`, and your workspace paths in `ALLOWED_DIRS_JSON`. Set `DEFAULT_DIR_ALIAS` to one of the configured aliases. Set `CODEX_SANDBOX=read-only` and `CODEX_BYPASS_APPROVALS=0` as standalone lines to start with the narrowest access.
+5. Run `bash install.sh`, then try `/ping`, `/repos`, and `/ask List the top-level files` in Telegram.
 
 ## Configuration Reference
 
@@ -119,10 +69,9 @@ All configuration lives in `config.env`.
 ---
 
 ## Security Notes
-- Only allowlisted users can use the bot.
-- Only allowlisted directories are accessible.
-- No raw filesystem paths are accepted.
-- No shell commands are exposed via Telegram.
+- Grant Telegram access only to trusted users. Authorized users can send prompts to Codex and change its permission mode with `/permissions`.
+- Workspace aliases restrict starting directories. The Codex sandbox controls actual filesystem access, and bypass mode disables that protection.
+- Keep the bot token out of Git. Review the configured permissions before allowing write access.
 
 ---
 
@@ -145,4 +94,4 @@ All configuration lives in `config.env`.
 ---
 
 ## License
-MIT
+[MIT](LICENSE).
